@@ -29,7 +29,7 @@ The pipeline is built from scratch to demonstrate full control over the CV and M
 This project utilizes `uv` for reproducible, lockfile-backed dependency management. To clone the repository and install the exact verified environment from the `uv.lock` file:
 
 ```bash
-git clone [https://github.com/szpwski/aircraft-turnaround-tracker.git](https://github.com/szpwski/aircraft-turnaround-tracker.git)
+git clone https://github.com/szpwski/aircraft-turnaround-tracker.git
 cd turnaround-tracker
 uv sync
 ```
