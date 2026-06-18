@@ -5,6 +5,7 @@
 ![OpenCV](https://img.shields.io/badge/opencv-%23white.svg?style=flat&logo=opencv&logoColor=white)
 ![Pandas](https://img.shields.io/badge/pandas-%23150458.svg?style=flat&logo=pandas&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-%23FE4B4B.svg?style=flat&logo=streamlit&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)
 
 An end-to-end computer vision and operational analytics pipeline designed to measure and optimize aircraft ground turnaround operations. 
 
@@ -46,6 +47,16 @@ Launch the interactive Streamlit dashboard directly from your terminal:
 
 ```bash
 uv run streamlit run app.py
+```
+
+### Testing & Quality Assurance
+
+This project utilizes `pytest` for automated unit testing to ensure pipeline reliability and data integrity. Currently, the test suite covers the core utility functions (`utils`), verifying that bounding box transformations, intersection-over-union (IoU) math, and time-series conversions execute deterministically.
+
+To run the test suite locally using your `uv` environment:
+
+```bash
+uv run pytest
 ```
 
 ### Testing the Pipeline
