@@ -4,20 +4,47 @@ import yt_dlp
 import tempfile
 import os
 import subprocess
-import numpy as np
-import pandas as pd
 import plotly.express as px
-from datetime import datetime, timedelta
+
+from src.model import ObjectDetector
+from src.tracker import GreedyIoUTracker
+from src.utils import annotate_frame
+from src.etl import TracksDataProcessor, TracksDataColumns
+
+
+MAX_TIME_GUARDRAIL_SECONDS = 30  # Limit processing to first 30 seconds of video for demo purposes
 
 # --- Page Config & UI ---
 st.set_page_config(page_title="Turnaround Analytics", layout="wide")
 st.title("🛫 Post-Event Turnaround Analytics")
 st.markdown("Analyze aircraft ground operations from live webcam streams.")
 
-# --- Sidebar Inputs ---
-st.sidebar.header("Data Source")
-yt_url = st.sidebar.text_input("Paste YouTube URL:", placeholder="https://www.youtube.com/watch?v=...")
+# --- Sidebar: Pipeline Settings ---
+st.sidebar.header("⚙️ Pipeline Settings")
+st.sidebar.markdown(
+    """
+    *Use these controls to fine-tune the tracking engine:*
+    * **Confidence:** Minimum certainty required to detect a vehicle.
+    * **IoU:** Overlap required to link a vehicle between frames.
+    * **Lost Frames:** How long to "remember" a vehicle if it gets hidden behind a wing.
+    """
+)
 
+# Hyperparameter Controls
+conf_threshold = st.sidebar.slider("Confidence Threshold", min_value=0.10, max_value=1.00, value=0.95, step=0.05)
+iou_threshold = st.sidebar.slider("IoU Threshold", min_value=0.05, max_value=1.00, value=0.25, step=0.05)
+max_lost_frames = st.sidebar.number_input("Max Lost Frames", min_value=1, max_value=300, value=60, step=5)
+
+# --- Initialize Model and Tracker ---
+model = ObjectDetector(device='cuda', confidence_threshold=conf_threshold)
+tracker = GreedyIoUTracker(iou_threshold=iou_threshold, max_lost_frames=max_lost_frames)
+processor = TracksDataProcessor()
+first_seen = {}  # To track the first frame index when each object was seen
+
+# --- Sidebar Inputs ---
+st.sidebar.markdown("---")
+st.sidebar.header("🎬 Data Source")
+yt_url = st.sidebar.text_input("Paste YouTube URL:", placeholder="https://www.youtube.com/watch?v=...")
 
 if st.sidebar.button("▶️ Run Analysis"):
     if not yt_url:
@@ -48,7 +75,7 @@ if st.sidebar.button("▶️ Run Analysis"):
 
         out = None
         width, height = 0, 0
-        max_frames = int(30 * fps) # Guardrail to limit processing to 30 seconds of video for demo
+        max_frames = int(MAX_TIME_GUARDRAIL_SECONDS * fps) # Guardrail to limit processing to 30 seconds of video for demo
         frame_count = 0
 
         # Streamlit progress bar
@@ -63,20 +90,26 @@ if st.sidebar.button("▶️ Run Analysis"):
             # Initialize video writer on first frame
             if out is None:
                 height, width = frame.shape[:2]
+                # Setup ROI based on actual frame dimensions
+                y1, y2 = int(height * 0.2), int(height * 0.9)
+                x1, x2 = int(width * 0.1), int(width * 0.9)
                 out = cv2.VideoWriter(raw_avi_path, cv2.VideoWriter_fourcc(*'XVID'), fps, (width, height))
 
-            # Inference
-            frame_bgr = frame.copy()
-            # Dummy box for visual feedback if model isn't hooked up yet
-            cv2.rectangle(frame_bgr, (50, 50), (250, 250), (0, 255, 0), 2)
-            cv2.putText(frame_bgr, f"Tracking Active", (50, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            # Crop to ROI and run inference
+            roi_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)[y1:y2, x1:x2]
+
+            # Inference on model
+            boxes, labels, scores = model.detect(roi_rgb)
+
+            # Update tracker with new detections
+            tracks = tracker.update(boxes, labels)
+
+            # Annotate frame with active tracks
+            frame_bgr, first_seen = annotate_frame(tracks, first_seen, frame, frame_count, fps, x1, y1)
+
+            processor.log_state(tracker.get_active_tracks(), frame_count)
             
-            # Dimension lock check
-            if frame_bgr.shape[:2] != (height, width):
-                frame_bgr = cv2.resize(frame_bgr, (width, height))
-            if frame_bgr.dtype != np.uint8:
-                frame_bgr = frame_bgr.astype(np.uint8)
-                
+            # Write annotated frame to output video
             out.write(frame_bgr)
             
             frame_count += 1
@@ -105,5 +138,60 @@ if st.sidebar.button("▶️ Run Analysis"):
         # Clean up the massive RAW avi file
         if os.path.exists(raw_avi_path): os.remove(raw_avi_path)
 
-st.markdown("---")
-st.markdown("## 📊 Turnaround Operations Report")
+        st.markdown("---")
+        st.markdown("## 📊 Turnaround Operations Report")
+
+        # Process the logged track data to extract KPIs and prepare for visualization
+        processor.transform_data(fps=fps)
+        df_turnaround = processor.get_dataframe()
+
+        # Top level KPIs
+        col1, col2, col3 = st.columns(3)
+
+        kpis = processor.get_kpis()
+        total_vehicles = kpis["total_vehicles"]
+        total_personnel = kpis["total_personnel"]
+        max_duration = kpis["max_duration"]
+
+        col1.metric("🚚 Total Vehicles Detected", total_vehicles)
+        col2.metric("👷 Ground Crew Detected", total_personnel)
+        col3.metric("⏱️ Longest Service Time", f"{max_duration:.1f}s")
+
+
+        # Gantt Chart Visualization
+        st.markdown("### 📈 Operational Timeline (Gantt)")
+
+        # Plotly Express Timeline creates beautiful, interactive Gantt charts
+        fig = px.timeline(
+            df_turnaround, 
+            x_start=TracksDataColumns.PLOT_START.value, 
+            x_end=TracksDataColumns.PLOT_END.value, 
+            y=TracksDataColumns.VEHICLE_ID.value,
+            color=TracksDataColumns.CATEGORY.value,
+            hover_data=[TracksDataColumns.DURATION_SEC.value],
+            color_discrete_map={"truck": "#1f77b4", "person": "#ff7f0e"}
+        )
+        # Update layout to reverse Y axis (so the first vehicle appears at the top)
+        fig.update_yaxes(autorange="reversed")
+        # Format X axis to just show minutes:seconds
+        fig.update_layout(xaxis=dict(tickformat="%M:%S"))
+
+        st.plotly_chart(fig, use_container_width=True)
+
+
+        # Data export
+        st.markdown("### 🗄️ Raw Audit Log")
+        # Display the dataframe cleanly
+        st.dataframe(
+            df_turnaround[[TracksDataColumns.VEHICLE_ID, TracksDataColumns.CATEGORY, TracksDataColumns.START_SEC, TracksDataColumns.END_SEC, TracksDataColumns.DURATION_SEC]], 
+            use_container_width=True
+        )
+
+        # Provide a download button for the CSV
+        csv = df_turnaround.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Turnaround Audit (CSV)",
+            data=csv,
+            file_name='turnaround_audit_log.csv',
+            mime='text/csv',
+        )
