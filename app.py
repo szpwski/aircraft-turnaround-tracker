@@ -36,7 +36,11 @@ iou_threshold = st.sidebar.slider("IoU Threshold", min_value=0.05, max_value=1.0
 max_lost_frames = st.sidebar.number_input("Max Lost Frames", min_value=1, max_value=300, value=60, step=5)
 
 # --- Initialize Model and Tracker ---
-model = ObjectDetector(device='cuda', confidence_threshold=conf_threshold)
+@st.cache_resource
+def load_ai_models():
+    # Cache the model so it doesn't reload into memory on every UI click
+    return ObjectDetector(device='cpu', confidence_threshold=conf_threshold)
+model = load_ai_models()
 tracker = GreedyIoUTracker(iou_threshold=iou_threshold, max_lost_frames=max_lost_frames)
 processor = TracksDataProcessor()
 first_seen = {}  # To track the first frame index when each object was seen
