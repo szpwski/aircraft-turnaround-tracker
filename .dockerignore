@@ -1,0 +1,19 @@
+# Local Environments
+.venv/
+venv/
+env/
+
+# Test Videos & Data (Stops the 169MB transfer)
+*.mp4
+*.avi
+*.mkv
+
+# Security & Secrets
+.env
+
+# Version Control
+.git/
+
+# Python Junk
+__pycache__/
+*.pyc
