@@ -1,4 +1,3 @@
 .venv
 *.pyc
 videos/annotated/
-secrets.txt
