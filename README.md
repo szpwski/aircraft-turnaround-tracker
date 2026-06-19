@@ -13,7 +13,9 @@ This project ingests raw tarmac video files, utilizes deep learning for object d
 
 ## [View Live Analytics Dashboard](https://turnaroundtracker-app.redtree-18dff6ae.polandcentral.azurecontainerapps.io)
 
-> **Note to Recruiters:** This application is deployed on a serverless Azure Container App architecture that scales to zero to optimize cloud FinOps. **The initial page load may take 30–45 seconds** as the container cold-starts. Subsequent interactions are instantaneous. 
+> **Note:** This application is deployed on a serverless Azure Container App architecture that scales to zero to optimize cloud FinOps. **The initial page load may take 30–45 seconds** as the container cold-starts. Subsequent interactions are instantaneous. 
+
+> **Note 2**: Access requires Microsoft authentication. This is intentionally enabled to demonstrate Azure application security and protected access patterns.
 
 **Want to test the live app?** Since you likely don't have tarmac footage on hand, **[Download this Sample Video (MP4)](https://raw.githubusercontent.com/szpwski/aircraft-turnaround-tracker/main/videos/input_sample/turnaround_video.mp4)** to upload and test the tracking pipeline.
 
