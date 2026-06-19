@@ -54,7 +54,8 @@ uploaded_file = st.sidebar.file_uploader("Upload Turnaround Video", type=["mp4",
 if st.sidebar.button("▶️ Run Analysis"):
     if not uploaded_file:
         st.warning("Please upload a valid video file.")
-
+    elif uploaded_file.size > 100 * 1024 * 1024:
+        st.error("File too large")
     else:
         st.info("Video loaded. Running processing...")
 
