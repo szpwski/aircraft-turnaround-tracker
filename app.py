@@ -12,7 +12,7 @@ from src.utils import annotate_frame
 from src.etl import TracksDataProcessor, TracksDataColumns
 
 
-MAX_TIME_GUARDRAIL_SECONDS = 30  # Limit processing to first 30 seconds of video for demo purposes
+MAX_TIME_GUARDRAIL_SECONDS = 15  # Limit processing to first 15 seconds of video for demo purposes
 
 # --- Page Config & UI ---
 st.set_page_config(page_title="Turnaround Analytics", layout="wide")
@@ -75,7 +75,7 @@ if st.sidebar.button("▶️ Run Analysis"):
 
         out = None
         width, height = 0, 0
-        max_frames = int(MAX_TIME_GUARDRAIL_SECONDS * fps) # Guardrail to limit processing to 30 seconds of video for demo
+        max_frames = int(MAX_TIME_GUARDRAIL_SECONDS * fps) # Guardrail to limit processing
         frame_count = 0
 
         # Streamlit progress bar

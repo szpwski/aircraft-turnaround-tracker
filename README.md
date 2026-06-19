@@ -66,4 +66,4 @@ Once the dashboard opens in your browser, you can paste either of the following 
 
 - Example 2 (Close Up): https://www.youtube.com/watch?v=yKTvu_T7eOc
 
-> (Note: The system contains an automatic 2-minute guardrail to prevent massive memory usage during PoC testing).
+> (Note: The system contains an automatic 15 second guardrail to prevent massive memory usage during PoC testing).
