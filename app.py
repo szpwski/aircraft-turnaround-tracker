@@ -1,6 +1,5 @@
 import streamlit as st
 import cv2
-import yt_dlp
 import tempfile
 import os
 import subprocess
