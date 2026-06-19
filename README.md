@@ -11,6 +11,12 @@ An end-to-end computer vision and operational analytics pipeline designed to mea
 
 This project ingests raw tarmac video files, utilizes deep learning for object detection, tracks service vehicles across time, and aggregates the data into an interactive post-event analytics dashboard to calculate **Production Efficiency** and **Time-in-Zone** metrics.
 
+## [View Live Analytics Dashboard](https://turnaroundtracker-app.redtree-18dff6ae.polandcentral.azurecontainerapps.io)
+
+> **Note to Recruiters:** This application is deployed on a serverless Azure Container App architecture that scales to zero to optimize cloud FinOps. **The initial page load may take 30–45 seconds** as the container cold-starts. Subsequent interactions are instantaneous. 
+
+An end-to-end computer vision and operational analytics pipeline.
+
 ## Business Use Case
 Ground turnaround time is a major cost center in aviation. This tool transitions raw visual data into structured operational intelligence, allowing operations managers to:
 * **Audit Service Level Agreements (SLAs):** Automatically verify how long catering, fuel, and baggage vehicles spend attached to an aircraft.
