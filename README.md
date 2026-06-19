@@ -9,7 +9,7 @@
 
 An end-to-end computer vision and operational analytics pipeline designed to measure and optimize aircraft ground turnaround operations. 
 
-This project dynamically ingests raw tarmac video streams, utilizes deep learning for object detection, tracks service vehicles across time, and aggregates the data into an interactive post-event analytics dashboard to calculate **Production Efficiency** and **Time-in-Zone** metrics.
+This project ingests raw tarmac video files, utilizes deep learning for object detection, tracks service vehicles across time, and aggregates the data into an interactive post-event analytics dashboard to calculate **Production Efficiency** and **Time-in-Zone** metrics.
 
 ## Business Use Case
 Ground turnaround time is a major cost center in aviation. This tool transitions raw visual data into structured operational intelligence, allowing operations managers to:
@@ -19,8 +19,8 @@ Ground turnaround time is a major cost center in aviation. This tool transitions
 ## System Architecture
 The pipeline is built from scratch to demonstrate full control over the CV and MLOps lifecycle, deliberately avoiding pre-packaged tracking pipelines in favor of native implementation.
 
-1. **Dynamic Video Ingestion:** Utilizes `yt-dlp` to extract raw HTTP streams from live or recorded YouTube tarmac feeds, piping them directly into system memory.
-2. **Deep Learning Inference:** A pre-trained `Faster R-CNN (ResNet50)` via Torchvision detects relevant COCO classes (trucks, cars, persons) frame-by-frame.
+1. **Video Ingestion:** Users upload raw tarmac video files directly through the Streamlit interface, ensuring a robust, secure data pipeline that avoids third-party streaming dependencies or anti-bot blocks.
+2. **Deep Learning Inference:** A pre-trained `Faster R-CNN (ResNet50)` via Torchvision detects relevant COCO classes (trucks, cars, persons). The system utilizes a "Frame Skipper" architecture, running heavy inference at set intervals to optimize CPU compute times.
 3. **Temporal Association (Tracking):** A custom-built, stateful **Greedy Intersection over Union (IoU) Tracker** bridges single-frame detections into continuous object lifespans.
 4. **Data Engineering:** Object lifespans are logged and transformed into a Pandas DataFrame to extract real-world KPIs.
 5. **Insights Dashboard:** A local Streamlit web application orchestrates the pipeline. It handles dynamic OpenCV dimension-locking, uses `FFmpeg` to transcode the processed OpenCV output into a web-safe H.264 format, and renders an interactive `Plotly` Gantt chart of the turnaround timeline.
@@ -37,7 +37,7 @@ Because the pipeline automatically transcodes the tracked output into a web-safe
 This project utilizes `uv` for reproducible, lockfile-backed dependency management. 
 
 ```bash
-git clone https://github.com/szpwski/aircraft-turnaround-tracker.git
+git clone [https://github.com/szpwski/aircraft-turnaround-tracker.git](https://github.com/szpwski/aircraft-turnaround-tracker.git)
 cd aircraft-turnaround-tracker
 uv sync
 ```
@@ -50,20 +50,18 @@ uv run streamlit run app.py
 ```
 
 ### Testing & Quality Assurance
+This project utilizes pytest for automated unit testing to ensure pipeline reliability and data integrity. Currently, the test suite covers the core utility functions (utils), verifying that bounding box transformations, intersection-over-union (IoU) math, and time-series conversions execute deterministically.
 
-This project utilizes `pytest` for automated unit testing to ensure pipeline reliability and data integrity. Currently, the test suite covers the core utility functions (`utils`), verifying that bounding box transformations, intersection-over-union (IoU) math, and time-series conversions execute deterministically.
-
-To run the test suite locally using your `uv` environment:
-
+To run the test suite locally using your uv environment:
 ```bash
 uv run pytest
 ```
 
 ### Testing the Pipeline
-Once the dashboard opens in your browser, you can paste either of the following sample tarmac videos into the sidebar to test the dynamic ingestion and tracking capabilities:
+Once the dashboard opens in your browser, use the sidebar to upload a video file for analysis.
 
-- Example 1 (Wide Angle): https://www.youtube.com/watch?v=J__OIvAZGUo
+A sample tarmac video has been provided in the repository for testing purposes. Please upload the following file to view the tracking and analytics engine in action:
 
-- Example 2 (Close Up): https://www.youtube.com/watch?v=yKTvu_T7eOc
+- `videos/input_sample/turnaround_video.mp4`
 
-> (Note: The system contains an automatic 15 second guardrail to prevent massive memory usage during PoC testing).
+(Note: The system contains an automatic 10-second guardrail to prevent massive compute times during local PoC testing).

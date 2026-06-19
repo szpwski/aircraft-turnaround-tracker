@@ -12,8 +12,8 @@ from src.utils import annotate_frame
 from src.etl import TracksDataProcessor, TracksDataColumns
 
 
-MAX_TIME_GUARDRAIL_SECONDS = 15  # Limit processing to first 15 seconds of video for demo purposes
-
+MAX_TIME_GUARDRAIL_SECONDS = 10  # Limit processing to first 15 seconds of video for demo purposes
+INFERENCE_INTERVAL = 15 # Process every 15th frame to reduce load on the model and tracker
 # --- Page Config & UI ---
 st.set_page_config(page_title="Turnaround Analytics", layout="wide")
 st.title("🛫 Post-Event Turnaround Analytics")
@@ -39,7 +39,7 @@ max_lost_frames = st.sidebar.number_input("Max Lost Frames", min_value=1, max_va
 @st.cache_resource
 def load_ai_models():
     # Cache the model so it doesn't reload into memory on every UI click
-    return ObjectDetector(device='cpu', confidence_threshold=conf_threshold)
+    return ObjectDetector(device='cuda', confidence_threshold=conf_threshold)
 model = load_ai_models()
 model.confidence_threshold = conf_threshold  # Update model confidence threshold based on sidebar input
 tracker = GreedyIoUTracker(iou_threshold=iou_threshold, max_lost_frames=max_lost_frames)
@@ -49,27 +49,24 @@ first_seen = {}  # To track the first frame index when each object was seen
 # --- Sidebar Inputs ---
 st.sidebar.markdown("---")
 st.sidebar.header("🎬 Data Source")
-yt_url = st.sidebar.text_input("Paste YouTube URL:", placeholder="https://www.youtube.com/watch?v=...")
+# Replaced YouTube with a robust Local File Uploader
+uploaded_file = st.sidebar.file_uploader("Upload Turnaround Video", type=["mp4", "avi", "mov"])
 
 if st.sidebar.button("▶️ Run Analysis"):
-    if not yt_url:
-        st.warning("Please provide a valid YouTube URL.")
+    if not uploaded_file:
+        st.warning("Please upload a valid video file.")
 
     else:
-        with st.spinner("Extracting stream metadata..."):
-            ydl_opts = {"format": "best[ext=mp4]/", "quiet": True, "noplaylist": True}
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info_dict = ydl.extract_info(yt_url, download=False)
-                    stream_url = info_dict["url"]
-            except Exception as e:
-                st.error(f"Error extracting stream URL: {e}")
-                st.stop()
+        st.info("Video loaded. Running processing...")
 
-        st.info("Stream connected. Processing frames... (this will take a moment)")
+        # Save uploaded file to a temporary location for OpenCV to read
+        temp_dir = tempfile.gettempdir()
+        input_video_path = os.path.join(temp_dir, "input_upload.mp4")
+        with open(input_video_path, "wb") as f:
+            f.write(uploaded_file.read())
 
         # Open CV Setup
-        cap = cv2.VideoCapture(stream_url)
+        cap = cv2.VideoCapture(input_video_path)
         fps = cap.get(cv2.CAP_PROP_FPS)
         if fps == 0 or fps != fps: fps = 30  # Default to 30 if unable to get FPS
 
@@ -87,6 +84,7 @@ if st.sidebar.button("▶️ Run Analysis"):
         progress_bar = st.progress(0)
 
         # Processing loop
+        current_tracks = [] # Stores the active bounding boxes and IDs
         while frame_count < max_frames:
             success, frame = cap.read()
             if not success:
@@ -103,11 +101,13 @@ if st.sidebar.button("▶️ Run Analysis"):
             # Crop to ROI and run inference
             roi_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)[y1:y2, x1:x2]
 
-            # Inference on model
-            boxes, labels, scores = model.detect(roi_rgb)
+            # THE INFERENCE GATE
+            if frame_count % INFERENCE_INTERVAL == 0:
+                # Inference on model
+                boxes, labels, scores = model.detect(roi_rgb)
 
-            # Update tracker with new detections
-            tracks = tracker.update(boxes, labels)
+                # Update tracker with new detections
+                tracks = tracker.update(boxes, labels)
 
             # Annotate frame with active tracks
             frame_bgr, first_seen = annotate_frame(tracks, first_seen, frame, frame_count, fps, x1, y1)
