@@ -41,6 +41,7 @@ def load_ai_models():
     # Cache the model so it doesn't reload into memory on every UI click
     return ObjectDetector(device='cpu', confidence_threshold=conf_threshold)
 model = load_ai_models()
+model.confidence_threshold = conf_threshold  # Update model confidence threshold based on sidebar input
 tracker = GreedyIoUTracker(iou_threshold=iou_threshold, max_lost_frames=max_lost_frames)
 processor = TracksDataProcessor()
 first_seen = {}  # To track the first frame index when each object was seen
